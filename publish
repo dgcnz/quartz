@@ -31,7 +31,22 @@ trap 'rm -f "$tmp_list" "$tmp_ignore" "$tmp_rel" "$tmp_list.filtered"' EXIT
 wlls_args=()
 while IFS= read -r root; do
   [[ -n "$root" ]] || continue
-  wlls_args+=("$root")
+  if [[ "$root" == *[\*\?\[]* ]]; then
+    pattern="$root" prefix=""
+    if [[ "$root" != /* ]]; then
+      pattern="$vault_root/$root"
+      prefix="${vault_root%/}/"
+    fi
+    matches=()
+    while IFS= read -r m; do matches+=("$m"); done < <(compgen -G "$pattern")
+    [[ ${#matches[@]} -gt 0 ]] || { echo "glob matched nothing: $root" >&2; exit 1; }
+    for m in "${matches[@]}"; do
+      [[ -n "$prefix" ]] && m="${m#"$prefix"}"
+      wlls_args+=("$m")
+    done
+  else
+    wlls_args+=("$root")
+  fi
 done < <(yq -r '.roots[]' "$CONFIG_PATH")
 
 [[ ${#wlls_args[@]} -gt 0 ]] || { echo "no roots provided" >&2; exit 1; }
