@@ -1,41 +1,86 @@
 import { QuartzComponentConstructor, QuartzComponentProps } from "./types"
 import { classNames } from "../util/lang"
+import { TransformOptions, transformLink } from "../util/path"
 import style from "./styles/contentMeta.scss"
 
 export default (() => {
-  function AuthorInfo({ fileData, displayClass }: QuartzComponentProps) {
+  function AuthorInfo({ fileData, displayClass, ctx }: QuartzComponentProps) {
     const fm = fileData.frontmatter ?? {}
     const authorsRaw = fm.authors
     const urlRaw = fm.url
 
-    let authors: string | null = null
-    const clean = (val: string) =>
-      val
-        .trim()
-        .replace(/^\[\[/, "")
-        .replace(/\]\]$/, "")
-        .trim()
+    type AuthorEntry = { label: string; href?: string; isAlias?: boolean }
+
+    const linkOptions: TransformOptions = {
+      strategy: "shortest",
+      allSlugs: ctx.allSlugs,
+    }
+
+    const wikilinkPattern = /^\[\[([^\[\]\|\#\\]+)?(#+[^\[\]\|\#\\]+)?(\\?\|[^\[\]\#]*)?\]\]$/
+
+    const parseAuthor = (rawVal: unknown): AuthorEntry | null => {
+      if (typeof rawVal !== "string") return null
+      const trimmed = rawVal.trim()
+      if (!trimmed) return null
+
+      const wikiMatch = trimmed.match(wikilinkPattern)
+      if (wikiMatch) {
+        const [, rawFp, rawHeader, rawAlias] = wikiMatch
+        const fp = (rawFp ?? "").trim()
+        const anchor = (rawHeader ?? "").trim()
+        const alias = rawAlias?.replace(/^\\?\|/, "").trim()
+        const target = `${fp}${anchor}`
+        if (target.length === 0 || !fileData.slug) return null
+
+        const href = transformLink(fileData.slug, target, linkOptions)
+        return { label: alias && alias.length > 0 ? alias : fp, href, isAlias: Boolean(alias) }
+      }
+
+      const label = trimmed.replace(/^\[\[/, "").replace(/\]\]$/, "").trim()
+      return label.length > 0 ? { label } : null
+    }
+
+    const authorEntries: AuthorEntry[] = []
 
     if (Array.isArray(authorsRaw)) {
-      const cleaned = authorsRaw.filter(Boolean).map((a) => clean(String(a))).filter(Boolean)
-      const joined = cleaned.join(", ")
-      authors = joined.length > 0 ? joined : null
+      for (const raw of authorsRaw) {
+        const parsed = parseAuthor(raw)
+        if (parsed) {
+          authorEntries.push(parsed)
+        }
+      }
     } else if (typeof authorsRaw === "string" && authorsRaw.trim().length > 0) {
-      const cleaned = clean(authorsRaw)
-      authors = cleaned.length > 0 ? cleaned : null
+      const parsed = parseAuthor(authorsRaw)
+      if (parsed) {
+        authorEntries.push(parsed)
+      }
     }
 
     const url = typeof urlRaw === "string" && urlRaw.trim().length > 0 ? urlRaw.trim() : null
 
-    if (!authors && !url) {
+    if (authorEntries.length === 0 && !url) {
       return null
     }
 
     return (
       <p class={classNames(displayClass, "content-meta", "author-info")}>
-        {authors ? (
+        {authorEntries.length > 0 ? (
           <span>
-            {authors}
+            {authorEntries.map((author, idx) => (
+              <span key={`author-${idx}`}>
+                {idx > 0 ? ", " : null}
+                {author.href ? (
+                  <a
+                    href={author.href}
+                    class={classNames("internal", author.isAlias ? "alias" : undefined)}
+                  >
+                    {author.label}
+                  </a>
+                ) : (
+                  author.label
+                )}
+              </span>
+            ))}
             {url ? <br /> : null}
           </span>
         ) : null}
