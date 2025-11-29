@@ -1,0 +1,14 @@
+vault_root: "/Users/dgcnz/Documents/Obsidian Vault"
+quartz_root: . # optional, defaults to current repo
+roots:
+  - "200 Projects/213 IntuitivePhysics/meetings/11-27.md"
+  - "200 Projects/213 IntuitivePhysics/reports/10-17.md"
+  - "200 Projects/213 IntuitivePhysics/reports/10-27.md"
+  - "200 Projects/213 IntuitivePhysics/reports/11-03.md"
+  - "200 Projects/213 IntuitivePhysics/reports/11-10.md"
+  - "200 Projects/213 IntuitivePhysics/reports/11-17.md"
+  - "200 Projects/213 IntuitivePhysics/reports/11-24.md"
+ignore:
+  - "100 Reference notes/102 Authors"
+  - "100 Reference notes/103 Affiliations"
+  - "100 Reference notes/104 Other"
